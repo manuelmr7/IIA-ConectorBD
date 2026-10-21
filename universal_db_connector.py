@@ -37,7 +37,7 @@ class UniversalDBConnector(DatabaseConnector):
         # Validar que sea únicamente una sentencia SELECT (RF3)
         if not re.match(r"^SELECT\b", sql, re.IGNORECASE):
             raise ValueError("Únicamente se admiten operaciones de consulta SELECT.")
-        param_nodes=root.xpath("/requestparameters/param")
+        param_nodes=root.xpath("/request/parameters/param")
         parameters = {}
 
         # Iteramos sobre cada etiqueta <param> dentro de <parameters>
