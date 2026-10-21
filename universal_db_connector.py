@@ -79,20 +79,19 @@ class UniversalDBConnector(DatabaseConnector):
         """Construye el documento XML <resultset> a partir de los registros obtenidos (RF4)"""
         resultset = etree.Element("resultset")
 
-        for row in rows:
-            row_elem = etree.SubElement(resultset, "row")
-            for col_name, val in zip(columns, row):
-                col_elem = etree.SubElement(row_elem, str(col_name))
-
-                if val is None:
-                    # Representación requerida para valores NULL: <email null="true" />
-                    col_elem.set("null", "true")
-                elif isinstance(val, (datetime, date)):
-                    col_elem.text = val.isoformat()
-                elif isinstance(val, bytes):
-                    col_elem.text = b64encode(val).decode("ascii")
+        for record in rows:
+            row_element=etree.SubElement(resultset, "row")
+            for column, value in zip(columns, record):
+                field=etree.SubElement(row_element, "field")
+                if value is None:
+                    field.set("null","true")
+                elif isinstance(value, (datetime, date)):
+                    field.text=value.isoformat()
+                elif isinstance(value, Decimal):
+                    field.text=str(value)
+                elif isinstance(value,(bytes,bytearray)):
+                    field.set("encoding","base64")
+                    field.text=b64encode(value).decode("ascii")
                 else:
-                    col_elem.text = str(val)
-
-        # pretty_print=True formatea la salida con saltos de línea e indentación como en el PDF
-        return etree.tostring(resultset, encoding="unicode", pretty_print=True).strip()
+                    field.text=str(value)
+                return etree.tostring(resultset, encoding="unicode", pretty_print=True)
