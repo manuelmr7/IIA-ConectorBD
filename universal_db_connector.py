@@ -1,6 +1,8 @@
 import re
 from datetime import date, datetime
 from base64 import b64encode
+from decimal import Decimal
+
 from lxml import etree
 from sqlalchemy import create_engine, text
 from database_connector import DatabaseConnector
@@ -35,25 +37,32 @@ class UniversalDBConnector(DatabaseConnector):
         # Validar que sea únicamente una sentencia SELECT (RF3)
         if not re.match(r"^SELECT\b", sql, re.IGNORECASE):
             raise ValueError("Únicamente se admiten operaciones de consulta SELECT.")
-
+        param_nodes=root.xpath("/requestparameters/param")
         parameters = {}
 
         # Iteramos sobre cada etiqueta <param> dentro de <parameters>
-        for param in root.xpath("/request/parameters/param"):
-            name = param.xpath("string(@name)").strip()
-            param_type = param.xpath("string(@type)").strip().lower()
-            raw_value = param.xpath("string(.)").strip()
+        for param in param_nodes:
+            name = param.get("name")
+            param_type = param.get("type","string")
+            value=(param.text or "").strip()
 
+            if not name:
+                raise ValueError("Parámetro sin nombre")
+            if name in parameters:
+                raise ValueError("Parámetro duplicado: {name}")
             # Conversión del valor según el atributo type (opcional pero muy recomendable)
-            if param_type in ("int", "integer"):
-                value = int(raw_value)
-            elif param_type in ("float", "double", "decimal"):
-                value = float(raw_value)
-            elif param_type in ("bool", "boolean"):
-                value = raw_value.lower() in ("true", "1", "yes")
-            else:
-                value = raw_value
-
+            if param_type == "integer":
+                value = int(value)
+            elif param_type == "float":
+                value = float(value)
+            elif param_type == "decimal":
+                value = Decimal(value)
+            elif param_type == "boolean":
+                if value.lower() not in ("true","false"):
+                    raise ValueError("Valor booleano no válido")
+                value=value.lower() == "true"
+            elif param_type != "string":
+                raise ValueError(f"Tipo de parámetro no soportado: {param_type}")
             parameters[name] = value
 
         return sql, parameters
